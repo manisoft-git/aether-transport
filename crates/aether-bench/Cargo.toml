@@ -1,0 +1,16 @@
+[package]
+name = "aether-bench"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Criterion microbenchmarks and memory allocation profilers for Aether"
+
+[dependencies]
+aether-math = { path = "../aether-math" }
+aether-wire = { path = "../aether-wire" }
+aether-coder = { path = "../aether-coder" }
+criterion = { workspace = true }
+
+[[bench]]
+name = "encoding_bench"
+harness = false

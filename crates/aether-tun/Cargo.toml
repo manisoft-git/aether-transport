@@ -1,0 +1,13 @@
+[package]
+name = "aether-tun"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Virtual TUN network device driver for transparent OS-level packet tunneling"
+
+[dependencies]
+aether-wire = { path = "../aether-wire" }
+tokio = { workspace = true }
+libc = "0.2"
+thiserror = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+<rfc category="exp" ipr="trust200902" docName="draft-candidate-aether-00" submissionType="independent">
+  <front>
+    <title abbrev="Aether Transport Protocol">
+      Aether: An Adaptive Sub-IP Network Coding Transport Protocol for Highly Lossy Wireless Environments
+    </title>
+
+    <author fullname="Aether Research Candidate" initials="A.R." surname="Candidate">
+      <organization>Independent Systems Research</organization>
+      <address>
+        <postal>
+          <city>Port Harcourt</city>
+          <region>Rivers State</region>
+          <country>Nigeria</country>
+        </postal>
+        <email>research@aether-transport.org</email>
+      </address>
+    </author>
+
+    <date year="2026" month="September" day="08"/>
+
+    <area>Transport</area>
+    <workgroup>Network Working Group</workgroup>
+    <keyword>Network Coding</keyword>
+    <keyword>Fulcrum</keyword>
+    <keyword>Congestion Control</keyword>
+    <keyword>Wireless Transport</keyword>
+
+    <abstract>
+      <t>
+        This document specifies Aether, a sovereign sub-IP and UDP-encapsulated transport protocol engineered for operating environments characterized by extreme non-congestive physical-layer packet loss (10% to 30%), severe bufferbloat, and asymmetric cellular connectivity. Aether unifies Fulcrum Network Coding (concatenated GF(2) outer expansion and sliding-window GF(2^8) inner random linear coding) with an Extended Kalman Filter (EKF) delay-gradient congestion controller, zero-copy kernel bypass, and subspace homomorphic vector MAC authentication to eliminate transport collapses caused by non-congestive RF fading.
+      </t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section title="Introduction" anchor="intro">
+      <t>
+        Contemporary transport protocols, including TCP Cubic (RFC 8312), TCP BBR, and standard QUIC (RFC 9000), interpret physical packet losses or sharp latency variations as primary indicators of intermediate queue saturation (congestion). In sub-Saharan African mobile deployments—specifically 4G LTE and 5G non-standalone infrastructure in Nigeria—uplinks experience severe non-congestive packet drops resulting from tropical atmospheric attenuation, Rayleigh multipath fading, and carrier-grade NAT timeouts.
+      </t>
+      <t>
+        Aether separates loss recovery from congestion notification by integrating rateless Fulcrum Network Coding directly into the transport framing layer, allowing receivers to reconstruct dropped symbols on the fly without waiting for Round-Trip Time (RTT) stall-inducing retransmission requests.
+      </t>
+    </section>
+
+    <section title="Terminology and Notation" anchor="terms">
+      <t>
+        The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174].
+      </t>
+      <t>
+        <list style="symbols">
+          <t>Symbol: An atomic chunk of transmission payload of fixed size S bytes.</t>
+          <t>Generation / Window (K): The block size of source symbols encoded together.</t>
+          <t>GF(2^8): Galois Field of size 256 defined by irreducible polynomial P(x) = x^8 + x^4 + x^3 + x + 1 (0x11D).</t>
+          <t>Degrees of Freedom (DoF): Number of linearly independent coded packets accumulated by the receiver.</t>
+        </list>
+      </t>
+    </section>
+
+    <section title="Protocol Architecture" anchor="arch">
+      <section title="Fulcrum Network Coding Layer">
+        <t>
+          Aether utilizes a two-tier concatenated coding structure:
+        </t>
+        <t>
+          1. Outer Binary Expansion: K source packets are expanded into K + r intermediate symbols via a sparse generator matrix over GF(2), executed using simple bitwise XOR operations.
+        </t>
+        <t>
+          2. Inner Random Linear Coding: Intermediate symbols are combined over GF(2^8) to synthesize rateless repair packets.
+        </t>
+        <t>
+          This design allows low-power receivers to decode systematically in O(1) complexity under benign channel conditions, falling back to full Gaussian-Jordan elimination only when channel degradation demands it.
+        </t>
+      </section>
+
+      <section title="Delay-Gradient EKF Congestion Arbiter">
+        <t>
+          Instead of cutting transmission windows upon packet loss, Aether executes an Extended Kalman Filter tracking the one-way queuing delay gradient d(Delta)/dt. When packet loss occurs while the delay gradient is less than or equal to zero, the loss is attributed to physical wireless degradation; pacing rates are preserved and coding redundancy is proactively increased.
+        </t>
+      </section>
+    </section>
+
+    <section title="Packet Format" anchor="wire_format">
+      <t>
+        Aether packets feature a compact, 16-byte fixed-size little-endian header preceding the symbol payload:
+      </t>
+      <figure anchor="header_diagram">
+        <artwork align="center"><![CDATA[
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          Window ID                            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|          Symbol ID            |          Window Size          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|             Seed              |             Flags             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|            CRC16              |           Auth Tag            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Payload Data...                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        ]]></artwork>
+      </figure>
+      <t>
+        Header fields:
+        <list style="hanging">
+          <t hangText="Window ID (32 bits):">Sequential identifier of the active coding window.</t>
+          <t hangText="Symbol ID (16 bits):">Index of the symbol within the window (0..K-1 for systematic, >=K for repair).</t>
+          <t hangText="Window Size (16 bits):">Source symbol count K for this generation.</t>
+          <t hangText="Seed (16 bits):">Deterministic PRNG seed used to generate GF(2^8) linear coefficients.</t>
+          <t hangText="Flags (16 bits):">Bitflags for FIN, PROBE, CELL_TELEMETRY, and PATH_ID.</t>
+          <t hangText="CRC16 (16 bits):">CRC-16-CCITT checksum over header and payload.</t>
+          <t hangText="Auth Tag (16 bits):">Subspace homomorphic vector MAC authentication tag.</t>
+        </list>
+      </t>
+    </section>
+
+    <section title="Security Considerations" anchor="security">
+      <t>
+        Linear network coding systems are vulnerable to Byzantine pollution attacks, wherein an adversary injects bogus linear combinations that corrupt the entire decoding matrix during Gaussian-Jordan elimination. Aether enforces subspace homomorphic vector MACs derived from an X25519 shared secret established at session initiation. Incoming packets failing subspace verification are discarded prior to matrix ingestion.
+      </t>
+    </section>
+
+    <section title="IANA Considerations" anchor="iana">
+      <t>
+        This document requests IANA to assign UDP port 4242 to the Aether Transport Protocol.
+      </t>
+    </section>
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <reference anchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author initials="S." surname="Bradner" fullname="Scott Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC8174">
+        <front>
+          <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+          <author initials="B." surname="Leiba" fullname="Barry Leiba"/>
+          <date year="2017" month="May"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+      </reference>
+      <reference anchor="RFC9000">
+        <front>
+          <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+          <author initials="J." surname="Iyengar" fullname="Jana Iyengar"/>
+          <author initials="M." surname="Thomson" fullname="Martin Thomson"/>
+          <date year="2021" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="9000"/>
+      </reference>
+    </references>
+  </back>
+</rfc>

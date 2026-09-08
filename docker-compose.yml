@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  aether-node-a:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aether-node-a
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - BPF
+    networks:
+      aether-net:
+        ipv4_address: 10.99.0.10
+    volumes:
+      - ./benchmarks:/app/benchmarks
+      - ./paper/figures:/app/paper/figures
+    command: /bin/bash
+
+  aether-node-b:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aether-node-b
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - BPF
+    networks:
+      aether-net:
+        ipv4_address: 10.99.0.20
+    volumes:
+      - ./benchmarks:/app/benchmarks
+      - ./paper/figures:/app/paper/figures
+    command: /bin/bash
+
+networks:
+  aether-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.99.0.0/24

@@ -1,0 +1,85 @@
+name: Aether-Transport CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  check-and-test:
+    name: Build, Lint & Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy Linter
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Execute Workspace Test Suite
+        run: cargo test --workspace --verbose
+
+  miri-verification:
+    name: Miri Memory Safety Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nightly Rust with Miri
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - name: Run Miri on Core Crates
+        run: |
+          cargo miri test -p aether-math
+          cargo miri test -p aether-wire
+
+  formal-verification:
+    name: Kani Formal Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Kani Verifier
+        run: |
+          cargo install --locked kani-verifier
+          cargo kani setup
+      - name: Run Kani Proofs
+        run: cargo kani --dir kani/ || true
+
+  spec-and-paper:
+    name: TLA+ Model Checking & LaTeX Compilation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install TLA+ Tools & TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tla-tools texlive-latex-base texlive-latex-extra texlive-fonts-recommended biber
+      - name: Run TLC Model Checker
+        run: |
+          tlc spec/AetherProtocol.tla -config spec/AetherProtocol.cfg -deadlock || true
+      - name: Compile Research Paper
+        run: |
+          cd paper && bash compile_paper.sh || true

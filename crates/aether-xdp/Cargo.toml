@@ -1,0 +1,12 @@
+[package]
+name = "aether-xdp"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "eBPF/XDP kernel bypass driver and userspace packet ring buffer loader"
+
+[dependencies]
+aether-wire = { path = "../aether-wire" }
+libc = "0.2"
+thiserror = { workspace = true }
+tracing = { workspace = true }

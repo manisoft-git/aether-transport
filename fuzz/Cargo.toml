@@ -1,0 +1,25 @@
+[package]
+name = "aether-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+aether-wire = { path = "../crates/aether-wire" }
+aether-math = { path = "../crates/aether-math" }
+
+[[bin]]
+name = "fuzz_wire"
+path = "fuzz_targets/fuzz_wire.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_solver"
+path = "fuzz_targets/fuzz_solver.rs"
+test = false
+doc = false

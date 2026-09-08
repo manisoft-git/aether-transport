@@ -1,0 +1,10 @@
+[package]
+name = "aether-wire"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Zero-copy 16-byte packed wire framing and CRC-16-CCITT verification"
+
+[dependencies]
+thiserror = { workspace = true }
+bytes = { workspace = true }

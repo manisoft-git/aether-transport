@@ -1,0 +1,10 @@
+[package]
+name = "aether-congestion"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Extended Kalman Filter (EKF) delay-gradient congestion arbiter and microsecond pacer"
+
+[dependencies]
+tokio = { workspace = true }
+tracing = { workspace = true }

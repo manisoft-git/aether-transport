@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/aether-math",
+    "crates/aether-wire",
+    "crates/aether-crypto",
+    "crates/aether-coder",
+    "crates/aether-congestion",
+    "crates/aether-telemetry",
+    "crates/aether-multipath",
+    "crates/aether-xdp",
+    "crates/aether-tun",
+    "crates/aether-sim",
+    "crates/aether-core",
+    "crates/aether-tui",
+    "crates/aether-bench",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aether-transport/aether"
+
+[workspace.dependencies]
+tokio = { version = "1.43", features = ["full"] }
+bytes = "1.10"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rand = "0.8"
+chacha20poly1305 = "0.10"
+x25519-dalek = { version = "2.0", features = ["static_secrets"] }
+criterion = { version = "0.5", features = ["async_tokio"] }
+proptest = "1.6"
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+overflow-checks = false
+strip = true
+
+[profile.bench]
+opt-level = 3
+lto = "fat"
+codegen-units = 1

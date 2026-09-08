@@ -1,0 +1,24 @@
+[package]
+name = "aether-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Async UDP reactor, block reassembly, and transport session state machine"
+
+[dependencies]
+aether-math = { path = "../aether-math" }
+aether-wire = { path = "../aether-wire" }
+aether-coder = { path = "../aether-coder" }
+aether-crypto = { path = "../aether-crypto" }
+aether-congestion = { path = "../aether-congestion" }
+aether-telemetry = { path = "../aether-telemetry" }
+tokio = { workspace = true }
+bytes = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+rand = { workspace = true }
+
+[[bin]]
+name = "aether-core"
+path = "src/main.rs"

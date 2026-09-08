@@ -1,0 +1,18 @@
+[package]
+name = "aether-tui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Ratatui high-framerate terminal telemetry dashboard and packet visualizer"
+
+[dependencies]
+aether-math = { path = "../aether-math" }
+aether-wire = { path = "../aether-wire" }
+aether-telemetry = { path = "../aether-telemetry" }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+rand = { workspace = true }
+
+[[bin]]
+name = "aether-tui"
+path = "src/main.rs"

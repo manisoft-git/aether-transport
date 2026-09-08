@@ -1,0 +1,15 @@
+[package]
+name = "aether-sim"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Deterministic discrete-event network simulator and Gilbert-Elliot chaos engine"
+
+[dependencies]
+aether-math = { path = "../aether-math" }
+aether-coder = { path = "../aether-coder" }
+aether-congestion = { path = "../aether-congestion" }
+aether-wire = { path = "../aether-wire" }
+rand = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

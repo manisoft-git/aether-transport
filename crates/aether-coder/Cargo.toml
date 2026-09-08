@@ -1,0 +1,12 @@
+[package]
+name = "aether-coder"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Fulcrum Network Coding Engine combining GF(2) outer expansion and sliding-window GF(2^8) inner RLNC"
+
+[dependencies]
+aether-math = { path = "../aether-math" }
+aether-wire = { path = "../aether-wire" }
+rand = { workspace = true }
+thiserror = { workspace = true }

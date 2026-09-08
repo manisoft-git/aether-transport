@@ -1,0 +1,9 @@
+[package]
+name = "aether-multipath"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Heterogeneous multipath packet bonding and asymmetric delay-aware scheduler"
+
+[dependencies]
+aether-wire = { path = "../aether-wire" }

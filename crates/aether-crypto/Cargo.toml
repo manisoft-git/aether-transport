@@ -1,0 +1,13 @@
+[package]
+name = "aether-crypto"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aether Project Research Initiative <research@aether-transport.org>"]
+description = "Subspace homomorphic vector MACs and ChaCha20-Poly1305 / X25519 session crypto"
+
+[dependencies]
+aether-math = { path = "../aether-math" }
+chacha20poly1305 = { workspace = true }
+x25519-dalek = { workspace = true }
+rand = { workspace = true }
+thiserror = { workspace = true }
