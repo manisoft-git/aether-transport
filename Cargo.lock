@@ -120,11 +120,13 @@ dependencies = [
 name = "aether-tun"
 version = "0.1.0"
 dependencies = [
+ "aether-core",
  "aether-wire",
  "libc",
  "thiserror",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

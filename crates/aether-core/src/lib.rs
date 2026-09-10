@@ -2,4 +2,5 @@
 
 pub mod session;
 
-pub use session::TransportSession;
+pub use session::{StreamReceiver, TransportSession};
+

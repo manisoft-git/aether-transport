@@ -7,7 +7,14 @@ description = "Virtual TUN network device driver for transparent OS-level packet
 
 [dependencies]
 aether-wire = { path = "../aether-wire" }
+aether-core = { path = "../aether-core" }
 tokio = { workspace = true }
 libc = "0.2"
 thiserror = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[[bin]]
+name = "aether-tun"
+path = "src/main.rs"
+

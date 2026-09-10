@@ -112,6 +112,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       --muted: #94a3b8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      overflow-x: hidden;
+      width: 100%;
+    }
     body {
       background: radial-gradient(circle at 50% 0%, #0c1a3a 0%, #030712 70%);
       color: var(--text);
@@ -123,8 +127,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .hud-header {
       background: rgba(11, 19, 41, 0.85);
       backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
-      padding: 12px 24px;
+      padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -352,6 +357,81 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       max-width: 500px;
       width: 90%;
       box-shadow: 0 0 32px rgba(56, 189, 248, 0.2);
+    }
+    #results-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      width: 100%;
+    }
+    @media (max-width: 640px) {
+      .hud-header {
+        padding: 10px 14px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .hud-header > div:last-child {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .brand-title {
+        font-size: 0.95rem;
+        flex-wrap: wrap;
+      }
+      .container {
+        padding: 12px;
+      }
+      .card {
+        padding: 14px;
+      }
+      .stats-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .stat-box {
+        padding: 10px;
+      }
+      .stat-num {
+        font-size: 1.2rem;
+      }
+      .stat-lbl {
+        font-size: 0.7rem;
+      }
+      select {
+        width: 100%;
+      }
+      .btn {
+        min-height: 44px;
+      }
+      #btn-run {
+        width: 100%;
+        justify-content: center;
+      }
+      .table-bench {
+        font-size: 0.75rem;
+        min-width: 460px;
+      }
+      .footer {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+        padding: 14px;
+      }
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+      }
+      .footer-links a {
+        margin: 0 4px;
+      }
+      .modal {
+        padding: 16px;
+        width: 95%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
     }
   </style>
 </head>

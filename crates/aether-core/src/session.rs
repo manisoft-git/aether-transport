@@ -141,6 +141,72 @@ impl TransportSession {
     }
 }
 
+/// Progressive stream receiver that accumulates wire packets across distinct window IDs.
+#[derive(Debug)]
+pub struct StreamReceiver {
+    k: usize,
+    r: usize,
+    symbol_size: usize,
+    decoders: std::collections::HashMap<u32, FulcrumDecoder>,
+}
+
+impl StreamReceiver {
+    pub fn new(k: usize, r: usize, symbol_size: usize) -> Self {
+        Self {
+            k,
+            r,
+            symbol_size,
+            decoders: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn k(&self) -> usize {
+        self.k
+    }
+
+    pub fn r(&self) -> usize {
+        self.r
+    }
+
+    pub fn symbol_size(&self) -> usize {
+        self.symbol_size
+    }
+
+    /// Ingests a raw byte slice from a wire frame. If the frame completes a window,
+    /// returns `Some((window_id, recovered_bytes))`.
+    pub fn ingest_packet(&mut self, raw_packet: &[u8]) -> Result<Option<(u32, Vec<u8>)>, aether_wire::WireError> {
+        let frame = PacketFrame::parse_and_verify(raw_packet)?;
+        let window_id = frame.header.window_id;
+
+        let decoder = self.decoders.entry(window_id).or_insert_with(|| {
+            FulcrumDecoder::new(self.k, self.r, self.symbol_size)
+        });
+
+        if frame.header.is_systematic() {
+            decoder.ingest_systematic(frame.header.symbol_id as usize, frame.payload);
+        } else {
+            decoder.ingest_repair(frame.header.seed, frame.payload);
+        }
+
+        if decoder.is_complete() {
+            if let Ok(recovered) = decoder.reconstruct() {
+                let mut flattened = Vec::with_capacity(self.k * self.symbol_size);
+                for sym in recovered {
+                    flattened.extend_from_slice(&sym);
+                }
+                self.decoders.remove(&window_id);
+                return Ok(Some((window_id, flattened)));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub fn active_windows(&self) -> usize {
+        self.decoders.len()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
