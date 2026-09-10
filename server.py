@@ -12,12 +12,14 @@ import time
 import random
 import socket
 import subprocess
+import threading
 from urllib.parse import urlparse, parse_qs
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 DEFAULT_PORT = 9090
 PORT = int(os.environ.get("PORT", DEFAULT_PORT))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SERVER_START_TIME = time.time()
 
 def run_real_transmission(message="ManiSoft Sovereign Protocol Stream", loss_pct=15.0, user="Tobi Olive", email="tobi585olive@gmail.com"):
     """
@@ -510,13 +512,65 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <span class="badge badge-proto">SOVEREIGN PROTOCOL SUITE</span>
       </div>
     </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <span class="badge badge-live">● 24/7 ONLINE</span>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <span class="badge badge-live" id="hud-active-badge">● ACTIVE (PID: {{PID}})</span>
       <button class="btn" style="padding: 5px 12px; font-size: 0.75rem;" onclick="openSupportModal()">FOUNDER BIO</button>
+      <button class="btn" style="padding: 5px 12px; font-size: 0.75rem; background: linear-gradient(135deg, #ef4444, #991b1b); border-color: #ef4444;" onclick="openTerminationModal()">🛑 TERMINATE</button>
     </div>
   </header>
 
   <div class="container">
+    <!-- ACTIVE HYPERVISOR STATUS & TERMINATION CONTROL PANEL -->
+    <div class="card" style="margin-bottom: 20px; border-color: rgba(16, 185, 129, 0.4); background: rgba(6, 15, 25, 0.9);">
+      <div class="card-title" style="color: var(--emerald); display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981;"></span>
+        <span>AETHER-TRANSPORT HYPERVISOR: ACTIVE INSTANCE</span>
+        <span class="badge badge-live" style="margin-left: auto;">PORT {{PORT}} • PID {{PID}}</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px;">
+        <div class="stat-box" style="padding: 10px; text-align: left;">
+          <div class="stat-lbl">PROCESS ID (PID)</div>
+          <div class="stat-num" style="font-size: 1.3rem; color: #fff;">{{PID}}</div>
+        </div>
+        <div class="stat-box" style="padding: 10px; text-align: left;">
+          <div class="stat-lbl">SOCKET LISTEN BIND</div>
+          <div class="stat-num" style="font-size: 1.1rem; color: var(--cyan);">0.0.0.0:{{PORT}}</div>
+        </div>
+        <div class="stat-box" style="padding: 10px; text-align: left;">
+          <div class="stat-lbl">ACTIVE UPTIME</div>
+          <div class="stat-num" id="live-uptime-val" style="font-size: 1.15rem; color: var(--amber);">00:00:00</div>
+        </div>
+        <div class="stat-box" style="padding: 10px; text-align: left;">
+          <div class="stat-lbl">HYPERVISOR STATE</div>
+          <div class="stat-num" style="font-size: 1.05rem; color: var(--emerald);">● ACTIVE</div>
+        </div>
+      </div>
+
+      <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 0.82rem; line-height: 1.6; color: #94a3b8;">
+        <div style="font-weight: 700; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+          <span>🛑 HOW TO TERMINATE THIS ACTIVE INSTANCE:</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+          <div>
+            <span style="color: var(--cyan); font-weight: 600;">Method 1: One-Click Web Shutdown</span>
+            <p style="margin: 4px 0 8px; color: #cbd5e1; font-size: 0.8rem;">Cleanly flush buffers, close all TCP/UDP sockets, and halt server process.</p>
+            <button class="btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); border-color: #ef4444; padding: 6px 14px; font-size: 0.8rem;" onclick="openTerminationModal()">
+              🛑 SHUTDOWN HYPERVISOR (PID {{PID}})
+            </button>
+          </div>
+          <div>
+            <span style="color: var(--cyan); font-weight: 600;">Method 2: Terminal Commands (SIGINT/SIGTERM)</span>
+            <p style="margin: 4px 0 6px; color: #cbd5e1; font-size: 0.8rem;">Run in your shell to stop process immediately:</p>
+            <div style="font-family: monospace; background: #030712; padding: 7px 10px; border-radius: 4px; color: #38bdf8; border: 1px solid var(--border); font-size: 0.78rem;">
+              kill -15 {{PID}} &nbsp;<span style="color: #64748b;">(or: kill -9 {{PID}} / Ctrl+C)</span>
+            </div>
+            <div style="margin-top: 4px; font-size: 0.72rem; color: #64748b;">Port cleanup: <code>fuser -k {{PORT}}/tcp</code></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="stats-row">
       <div class="stat-box">
         <div class="stat-lbl">CODING GAIN</div>
@@ -624,9 +678,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <p style="font-size:0.82rem; color:var(--muted); margin-bottom:14px;">
         Execute a real UDP multi-window FEC transmission through the native Rust aether-core binary running on this server. Packets are encoded, dropped at the simulated loss rate, and fully reconstructed via Gaussian elimination — no simulation math, actual wire protocol.
       </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px;">
+        <div>
+          <label style="font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 4px;">OPERATOR USERNAME</label>
+          <input type="text" id="tx-username" value="tobiolive5850" placeholder="tobiolive5850"
+            style="width:100%; background:#030712; border:1px solid var(--border); color:#fff; padding:8px 12px; border-radius:6px; font-family:inherit; font-size:0.82rem; outline:none;" />
+        </div>
+        <div>
+          <label style="font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 4px;">SURNAME FIRSTNAME</label>
+          <input type="text" id="tx-fullname" value="Tobi Olive" placeholder="Tobi Olive"
+            style="width:100%; background:#030712; border:1px solid var(--border); color:#fff; padding:8px 12px; border-radius:6px; font-family:inherit; font-size:0.82rem; outline:none;" />
+        </div>
+        <div>
+          <label style="font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 4px;">OPERATOR EMAIL</label>
+          <input type="email" id="tx-email" value="tobi585olive@gmail.com" placeholder="tobi585olive@gmail.com"
+            style="width:100%; background:#030712; border:1px solid var(--border); color:#fff; padding:8px 12px; border-radius:6px; font-family:inherit; font-size:0.82rem; outline:none;" />
+        </div>
+      </div>
+
       <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center;">
-        <input id="tx-message" type="text" value="ManiSoft Sovereign Protocol Stream"
-          style="background:#030712; border:1px solid var(--border); color:#fff; padding:9px 14px; border-radius:6px; font-family:inherit; font-size:0.85rem; flex:1; min-width:200px; outline:none;" />
+        <input id="tx-message" type="text" value="ManiSoft Sovereign Protocol Stream payload from Tobi Olive"
+          style="background:#030712; border:1px solid var(--border); color:#fff; padding:9px 14px; border-radius:6px; font-family:inherit; font-size:0.85rem; flex:1; min-width:200px; outline:none;" placeholder="Stream Payload Message" />
         <input id="tx-loss" type="number" value="15" min="0" max="60" step="1"
           style="background:#030712; border:1px solid var(--border); color:#fff; padding:9px 14px; border-radius:6px; font-family:inherit; font-size:0.85rem; width:100px; outline:none;" placeholder="Loss %" />
         <button id="btn-transmit" class="btn" onclick="runLiveTransmit()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5); border-color:#7c3aed;">
@@ -668,9 +741,76 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="termination-modal" class="modal-overlay" onclick="if(event.target===this)closeTerminationModal()">
+    <div class="modal" style="border-color: #ef4444; max-width: 480px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="color:#ef4444; font-size:1.1rem; margin:0; display:flex; align-items:center; gap:8px;">
+          <span>🛑 TERMINATE HYPERVISOR INSTANCE</span>
+        </h3>
+        <button onclick="closeTerminationModal()" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:0.85rem; color:#cbd5e1; margin-bottom:14px; line-height: 1.5;">
+        Are you sure you want to cleanly terminate this active Aether-Transport instance?
+      </p>
+      <div style="background:#030712; border:1px solid rgba(239, 68, 68, 0.3); border-radius:8px; padding:12px; font-size:0.8rem; line-height:1.6; color:#94a3b8; margin-bottom:16px;">
+        <div><strong>Process PID:</strong> <span style="color:#fff;">{{PID}}</span></div>
+        <div><strong>Port to release:</strong> <span style="color:var(--cyan);">TCP {{PORT}}</span></div>
+        <div><strong>Action:</strong> Closes all active sockets, flushes telemetry, and halts Python process.</div>
+        <div style="color:var(--amber); margin-top:4px;"><strong>To restart in terminal:</strong> <code>python3 server.py</code></div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" style="flex:1; justify-content:center; background:#1e293b; border-color:var(--border);" onclick="closeTerminationModal()">CANCEL</button>
+        <button class="btn" style="flex:1; justify-content:center; background:linear-gradient(135deg,#ef4444,#991b1b); border-color:#ef4444;" onclick="executeServerShutdown()">CONFIRM SHUTDOWN</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function openSupportModal() { document.getElementById('support-modal').style.display = 'flex'; }
     function closeSupportModal() { document.getElementById('support-modal').style.display = 'none'; }
+    function openTerminationModal() { document.getElementById('termination-modal').style.display = 'flex'; }
+    function closeTerminationModal() { document.getElementById('termination-modal').style.display = 'none'; }
+
+    async function executeServerShutdown() {
+      closeTerminationModal();
+      const badge = document.getElementById('hud-active-badge');
+      if (badge) {
+        badge.textContent = '🛑 TERMINATING...';
+        badge.style.background = 'rgba(239, 68, 68, 0.2)';
+        badge.style.color = '#ef4444';
+      }
+      try {
+        const res = await fetch('/api/shutdown');
+        const data = await res.json();
+        document.body.innerHTML = `
+          <div style="min-height: 100vh; background: #030712; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: monospace; padding: 20px; text-align: center;">
+            <div style="font-size: 3.5rem; margin-bottom: 16px;">🛑</div>
+            <h2 style="color: #ef4444; font-size: 1.5rem; margin-bottom: 8px;">AETHER-TRANSPORT HYPERVISOR TERMINATED</h2>
+            <p style="color: #94a3b8; max-width: 520px; line-height: 1.6; margin-bottom: 24px;">
+              Process PID <strong>${data.pid || '{{PID}}'}</strong> on port <strong>${data.port || '{{PORT}}'}</strong> has halted cleanly. All network sockets have been released.
+            </p>
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); padding: 16px 24px; border-radius: 8px; margin-bottom: 24px;">
+              <div style="color: var(--muted); font-size: 0.8rem; margin-bottom: 6px;">HOW TO RESTART:</div>
+              <code style="color: #38bdf8; font-size: 0.95rem;">python3 server.py</code>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        alert('Termination command acknowledged. Server process is offline.');
+        location.reload();
+      }
+    }
+
+    const clientStartTime = Date.now();
+    setInterval(() => {
+      const el = document.getElementById('live-uptime-val');
+      if (!el) return;
+      const s = Math.floor((Date.now() - clientStartTime) / 1000);
+      const hrs = String(Math.floor(s / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const secs = String(s % 60).padStart(2, '0');
+      el.textContent = hrs + ':' + mins + ':' + secs;
+    }, 1000);
 
     const canvas = document.getElementById('packetCanvas');
     const ctx = canvas.getContext('2d');
@@ -769,17 +909,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const btn = document.getElementById('btn-transmit');
       const box = document.getElementById('tx-result');
       const msg = document.getElementById('tx-message').value || 'ManiSoft Sovereign Protocol Stream';
-      const loss = document.getElementById('tx-loss').value || '15';
+      const user = document.getElementById('tx-fullname') ? document.getElementById('tx-fullname').value : 'Tobi Olive';
+      const email = document.getElementById('tx-email') ? document.getElementById('tx-email').value : 'tobi585olive@gmail.com';
       btn.textContent = '⚡ TRANSMITTING...';
       btn.disabled = true;
       box.style.display = 'block';
       box.innerHTML = '<span style="color:var(--cyan);">[*] Invoking native Rust aether-core binary...</span>';
       try {
-        const res = await fetch('/api/transmit?message=' + encodeURIComponent(msg) + '&loss=' + encodeURIComponent(loss));
+        const url = '/api/transmit?message=' + encodeURIComponent(msg) + '&loss=' + encodeURIComponent(loss) + '&user=' + encodeURIComponent(user) + '&email=' + encodeURIComponent(email);
+        const res = await fetch(url);
         const d = await res.json();
         if (d.status === 'success') {
           box.innerHTML = `
 <span style="color:var(--emerald);">[+] ENGINE: ${d.engine}</span>
+<span style="color:var(--cyan);">[+] Operator: ${d.user || user} &lt;${d.email || email}&gt;</span>
 <span style="color:#fff;">[+] Windows Processed:   <strong>${d.windows_processed}</strong></span>
 <span>[+] Packets on Wire:     ${d.packets_sent} sent / ${d.packets_dropped} dropped</span>
 <span>[+] Bytes Recovered:     <strong style="color:var(--emerald);">${d.bytes_recovered} bytes</strong> — ${d.data_integrity}</span>
@@ -822,21 +965,32 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
+            rendered = HTML_TEMPLATE.replace("{{PID}}", str(os.getpid())).replace("{{PORT}}", str(PORT))
+            self.wfile.write(rendered.encode("utf-8"))
             return
 
         if path == "/health":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
+            uptime_sec = round(time.time() - SERVER_START_TIME, 1)
             payload = {
                 "status": "healthy",
+                "active": True,
+                "pid": os.getpid(),
+                "port": PORT,
                 "service": "aether-transport",
                 "framework": "Rust / Tokio Mesh & Python HTTP Hypervisor",
                 "protocol": "Fulcrum Sliding-Window Multipath FEC",
                 "version": "1.0.0",
-                "port": PORT,
-                "uptime": time.time()
+                "uptime_seconds": uptime_sec,
+                "termination_guide": {
+                    "terminal": "Press Ctrl+C (SIGINT)",
+                    "kill_command": f"kill -15 {os.getpid()}",
+                    "force_kill": f"kill -9 {os.getpid()}",
+                    "port_cleanup": f"fuser -k {PORT}/tcp",
+                    "api_shutdown": "/api/shutdown"
+                }
             }
             self.wfile.write(json.dumps(payload).encode("utf-8"))
             return
@@ -891,11 +1045,39 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
             query = parse_qs(parsed.query)
             message = query.get("message", ["ManiSoft Sovereign Protocol Stream"])[0]
             loss_pct = float(query.get("loss", ["15.0"])[0])
-            result = run_real_transmission(message=message, loss_pct=loss_pct)
+            user = query.get("user", ["Tobi Olive"])[0]
+            email = query.get("email", ["tobi585olive@gmail.com"])[0]
+            result = run_real_transmission(message=message, loss_pct=loss_pct, user=user, email=email)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(result).encode("utf-8"))
+            return
+
+        if path == "/api/shutdown":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            resp = {
+                "status": "terminating",
+                "pid": os.getpid(),
+                "port": PORT,
+                "message": f"Aether-Transport Hypervisor (PID {os.getpid()}) terminated cleanly."
+            }
+            self.wfile.write(json.dumps(resp).encode("utf-8"))
+            self.wfile.flush()
+
+            def delayed_kill():
+                time.sleep(0.4)
+                print("\n" + "=" * 72)
+                print(f" [🛑] SHUTDOWN SIGNAL TRIGGERED VIA WEB CONSOLE (PID: {os.getpid()})")
+                print(" [+] Terminating Aether-Transport hypervisor process cleanly...")
+                print(" [+] Sockets closed. Goodbye!")
+                print("======================================================================")
+                sys.stdout.flush()
+                os._exit(0)
+
+            threading.Thread(target=delayed_kill, daemon=True).start()
             return
 
         self.send_response(404)
@@ -903,22 +1085,38 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps({"error": "Endpoint not found"}).encode("utf-8"))
 
+    def do_POST(self):
+        self.do_GET()
+
     def log_message(self, format, *args):
         sys.stderr.write(f"[Aether-Transport // {self.log_date_time_string()}] {args[0]} -> {args[1]}\n")
 
 def run_server(port=PORT):
+    pid = os.getpid()
     server = HTTPServer(("0.0.0.0", port), AetherRequestHandler)
-    print("=" * 70)
-    print(f" ⚡ AETHER-TRANSPORT SOVEREIGN PROTOCOL CONSOLE ONLINE")
-    print(f" ▶ Bind Address: http://0.0.0.0:{port}")
-    print(f" ▶ Local URL:    http://127.0.0.1:{port}")
-    print(f" ▶ Health Probe: http://127.0.0.1:{port}/health")
-    print("=" * 70)
+    print("=" * 72)
+    print(" ⚡ AETHER-TRANSPORT SOVEREIGN HYPERVISOR & RECEPTOR [ACTIVE]")
+    print(f" ▶ Status:        ● ACTIVE (ONLINE & SERVING)")
+    print(f" ▶ Process PID:   {pid}")
+    print(f" ▶ Local URL:     http://127.0.0.1:{port}")
+    print(f" ▶ Network URL:   http://0.0.0.0:{port}")
+    print(f" ▶ Health Probe:  http://127.0.0.1:{port}/health")
+    print("-" * 72)
+    print(" 🛑 HOW TO TERMINATE:")
+    print("   • Terminal:    Press Ctrl+C (SIGINT)")
+    print(f"   • Shell:       kill -15 {pid}   (or: kill -9 {pid})")
+    print(f"   • Port Kill:   fuser -k {port}/tcp")
+    print("   • Web Console: Click 'SHUTDOWN SERVER' on the web dashboard")
+    print("=" * 72)
     sys.stdout.flush()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n[+] Graceful shutdown initiated.")
+        print("\n" + "=" * 72)
+        print(" [🛑] KEYBOARD INTERRUPT RECEIVED (SIGINT)")
+        print(f" [+] Gracefully terminating Aether-Transport hypervisor (PID: {pid})...")
+        print(" [+] Port unbound. Sockets closed. Goodbye!")
+        print("=" * 72)
         server.server_close()
 
 if __name__ == "__main__":

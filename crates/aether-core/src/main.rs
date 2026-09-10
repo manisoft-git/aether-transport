@@ -260,8 +260,11 @@ async fn run_server(
     use_stdout: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let socket = UdpSocket::bind(bind_addr).await?;
+    let pid = std::process::id();
     println!("==================================================================");
-    println!(" AETHER-TRANSPORT: ASYNC UDP PROTOCOL REACTOR ONLINE");
+    println!(" ⚡ AETHER-TRANSPORT: ASYNC UDP PROTOCOL REACTOR [ACTIVE]");
+    println!(" Status:               ● ACTIVE (ONLINE & LISTENING)");
+    println!(" Process PID:          {}", pid);
     println!(" Listening on UDP:     {}", bind_addr);
     println!(" Parameters:           K={}, r={}, SymbolSize={} bytes", k, r, symbol_size);
     if let Some(ref path) = output_path {
@@ -272,9 +275,12 @@ async fn run_server(
         println!(" Payload Sink:         Terminal Live HUD");
     }
     println!(" Galois Field Engine:  GF(2^8) Fulcrum Cauchy-Reed-Solomon");
-    println!(" Press Ctrl+C to stop.");
+    println!("------------------------------------------------------------------");
+    println!(" 🛑 HOW TO TERMINATE:");
+    println!("   • Keyboard:         Press Ctrl+C (SIGINT)");
+    println!("   • Shell Command:    kill -15 {}  (or: kill -9 {})", pid, pid);
     println!("==================================================================");
-    info!("UDP reactor bound to {}", bind_addr);
+    info!("UDP reactor bound to {} (PID: {})", bind_addr, pid);
 
     let mut out_file = if let Some(ref path) = output_path {
         Some(File::create(path).await?)
@@ -286,7 +292,17 @@ async fn run_server(
     let mut buf = vec![0u8; 65535];
 
     loop {
-        let (len, peer) = socket.recv_from(&mut buf).await?;
+        let (len, peer) = tokio::select! {
+            res = socket.recv_from(&mut buf) => res?,
+            _ = tokio::signal::ctrl_c() => {
+                println!("\n==================================================================");
+                println!(" [🛑] SHUTDOWN SIGNAL RECEIVED (SIGINT)");
+                println!(" [+] Terminating Aether UDP protocol reactor (PID: {})...", pid);
+                println!(" [+] Sockets closed. Goodbye!");
+                println!("==================================================================");
+                return Ok(());
+            }
+        };
         let packet_bytes = &buf[..len];
 
         match PacketFrame::parse_and_verify(packet_bytes) {
@@ -505,18 +521,35 @@ async fn run_proxy_client(
     symbol_size: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(listen_addr).await?;
+    let pid = std::process::id();
     println!("==================================================================");
-    println!(" AETHER-TRANSPORT: TCP-TO-AETHER PROXY CLIENT ONLINE");
+    println!(" ⚡ AETHER-TRANSPORT: TCP-TO-AETHER PROXY CLIENT [ACTIVE]");
+    println!(" Status:               ● ACTIVE (ONLINE & LISTENING)");
+    println!(" Process PID:          {}", pid);
     println!(" Listening on TCP:     {}", listen_addr);
     println!(" Tunnel Target UDP:    {}", target_addr);
     println!(" FEC Protection:       K={}, r={}, SymbolSize={} bytes", k, r, symbol_size);
     println!(" Ready to accept and protect arbitrary TCP streams.");
+    println!("------------------------------------------------------------------");
+    println!(" 🛑 HOW TO TERMINATE:");
+    println!("   • Keyboard:         Press Ctrl+C (SIGINT)");
+    println!("   • Shell Command:    kill -15 {}  (or: kill -9 {})", pid, pid);
     println!("==================================================================");
 
     let session = Arc::new(Mutex::new(TransportSession::new(k, r, symbol_size)));
 
     loop {
-        let (mut tcp_stream, peer) = listener.accept().await?;
+        let (mut tcp_stream, peer) = tokio::select! {
+            res = listener.accept() => res?,
+            _ = tokio::signal::ctrl_c() => {
+                println!("\n==================================================================");
+                println!(" [🛑] SHUTDOWN SIGNAL RECEIVED (SIGINT)");
+                println!(" [+] Terminating TCP-to-Aether proxy client (PID: {})...", pid);
+                println!(" [+] Sockets closed. Goodbye!");
+                println!("==================================================================");
+                return Ok(());
+            }
+        };
         println!("[+] New TCP client connection from {}", peer);
 
         let udp_socket = UdpSocket::bind("0.0.0.0:0").await?;
@@ -559,11 +592,18 @@ async fn run_proxy_server(
     symbol_size: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let socket = UdpSocket::bind(bind_addr).await?;
+    let pid = std::process::id();
     println!("==================================================================");
-    println!(" AETHER-TRANSPORT: AETHER-TO-TCP GATEWAY FORWARDER ONLINE");
+    println!(" ⚡ AETHER-TRANSPORT: AETHER-TO-TCP GATEWAY FORWARDER [ACTIVE]");
+    println!(" Status:               ● ACTIVE (ONLINE & LISTENING)");
+    println!(" Process PID:          {}", pid);
     println!(" Listening on UDP:     {}", bind_addr);
     println!(" Forwarding to TCP:    {}", forward_addr);
     println!(" FEC Decoding Engine:  GF(2^8) Fulcrum Decoder");
+    println!("------------------------------------------------------------------");
+    println!(" 🛑 HOW TO TERMINATE:");
+    println!("   • Keyboard:         Press Ctrl+C (SIGINT)");
+    println!("   • Shell Command:    kill -15 {}  (or: kill -9 {})", pid, pid);
     println!("==================================================================");
 
     let mut receiver = StreamReceiver::new(k, r, symbol_size);
@@ -571,7 +611,18 @@ async fn run_proxy_server(
     let mut tcp_out: Option<TcpStream> = None;
 
     loop {
-        let (len, _peer) = socket.recv_from(&mut buf).await?;
+        let (len, _peer) = tokio::select! {
+            res = socket.recv_from(&mut buf) => res?,
+            _ = tokio::signal::ctrl_c() => {
+                println!("\n==================================================================");
+                println!(" [🛑] SHUTDOWN SIGNAL RECEIVED (SIGINT)");
+                println!(" [+] Terminating Aether-to-TCP gateway forwarder (PID: {})...", pid);
+                println!(" [+] Sockets closed. Goodbye!");
+                println!("==================================================================");
+                return Ok(());
+            }
+        };
+
         if let Ok(Some((_win_id, bytes))) = receiver.ingest_packet(&buf[..len]) {
             let payload = TransportSession::extract_framed_payload(&bytes)
                 .unwrap_or_else(|| bytes);

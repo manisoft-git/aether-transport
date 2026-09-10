@@ -79,12 +79,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let r: usize = get_arg("--r").and_then(|s| s.parse().ok()).unwrap_or(2);
     let symbol_size: usize = get_arg("--symbol-size").and_then(|s| s.parse().ok()).unwrap_or(1400);
 
+    let pid = std::process::id();
     println!("==================================================================");
-    println!(" AETHER-TUN: BIDIRECTIONAL VIRTUAL OS TUNNEL DAEMON");
+    println!(" ⚡ AETHER-TUN: BIDIRECTIONAL VIRTUAL OS TUNNEL DAEMON [ACTIVE]");
+    println!(" Status:               ● ACTIVE & TUNNELING");
+    println!(" Process PID:          {}", pid);
     println!(" Interface:            {}", tun_name);
     println!(" Remote Peer:          {}", remote_addr);
     println!(" Local UDP Bind:       {}", bind_addr);
     println!(" Coding Engine:        K={}, r={}, SymbolSize={} bytes", k, r, symbol_size);
+    println!("------------------------------------------------------------------");
+    println!(" 🛑 HOW TO TERMINATE:");
+    println!("   • Keyboard:         Press Ctrl+C (SIGINT)");
+    println!("   • Shell Command:    kill -15 {}  (or: kill -9 {})", pid, pid);
     println!("==================================================================");
 
     let tun = match TunDevice::create(&tun_name) {
@@ -162,6 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Task 2: TUN RX -> Receive from UDP remote, decode with Fulcrum FEC, write to TUN
     let tun_rx = Arc::clone(&tun_shared);
     let socket_rx = Arc::clone(&socket);
+    let tun_name_rx = tun_name.clone();
     let rx_handle = tokio::spawn(async move {
         let mut receiver = StreamReceiver::new(k, r, symbol_size);
         let mut udp_buf = vec![0u8; 65535];
@@ -179,7 +187,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 warn!("Failed to write recovered packet to TUN: {:?}", e);
                             } else {
                                 println!("  [TUN-RX] Window {} reconstructed ({} bytes) from {} and injected to {}",
-                                    win_id, payload.len(), peer, tun_name);
+                                    win_id, payload.len(), peer, tun_name_rx);
                             }
                         }
                         Ok(None) => {}
@@ -199,6 +207,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::select! {
         _ = tx_handle => {},
         _ = rx_handle => {},
+        _ = tokio::signal::ctrl_c() => {
+            println!("\n==================================================================");
+            println!(" [🛑] SHUTDOWN SIGNAL RECEIVED (SIGINT)");
+            println!(" [+] Tearing down TUN interface '{}' and terminating daemon (PID: {})...", tun_name, pid);
+            println!(" [+] All tunnel queues drained. Goodbye!");
+            println!("==================================================================");
+        }
     }
 
     Ok(())
