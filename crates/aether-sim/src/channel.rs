@@ -64,6 +64,7 @@ impl GilbertElliotChannel {
         (dropped, delay_ms)
     }
 
+    #[allow(dead_code)]
     pub fn state(&self) -> ChannelState {
         self.state
     }

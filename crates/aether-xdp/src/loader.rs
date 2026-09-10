@@ -50,4 +50,8 @@ impl XdpEngine {
     pub fn interface(&self) -> &str {
         &self.interface_name
     }
+
+    pub fn queue_id(&self) -> u32 {
+        self.queue_id
+    }
 }

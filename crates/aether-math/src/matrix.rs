@@ -4,7 +4,7 @@
 //! tracking linear rank and solving immediately once full rank K is reached.
 
 use crate::gf256::{gf_inv, gf_mul};
-use crate::simd::{vec_mul_add, vec_xor};
+use crate::simd::vec_mul_add;
 
 #[derive(Clone, Debug)]
 pub struct GaussianSolver {

@@ -212,7 +212,7 @@ mod tests {
         let s3 = vec![9, 10, 11, 12];
         let source = vec![s1.clone(), s2.clone(), s3.clone()];
 
-        let encoder = FulcrumEncoder::new(source.clone(), 1);
+        let _encoder = FulcrumEncoder::new(source.clone(), 1);
         let mut decoder = FulcrumDecoder::new(3, 1, 4);
 
         assert!(decoder.ingest_systematic(0, &s1));

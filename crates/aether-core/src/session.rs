@@ -84,7 +84,7 @@ impl TransportSession {
         }
 
         // 2. Proactive Fulcrum Repair Packets based on arbiter redundancy ratio
-        let num_repairs = (self.k as f64 * self.arbiter.redundancy_ratio()).ceil() as usize;
+        let num_repairs = self.r.max((self.k as f64 * self.arbiter.redundancy_ratio()).ceil() as usize);
         for rep_idx in 0..num_repairs {
             let seed = (self.current_window_id as u16).wrapping_mul(101) + (rep_idx as u16) + 1;
             let mut payload = vec![0u8; self.symbol_size];
@@ -147,16 +147,23 @@ mod tests {
 
     #[test]
     fn test_transport_session_roundtrip() {
-        let session = TransportSession::new(4, 2, 64);
+        let session = TransportSession::new(4, 0, 64);
         let test_data = b"Hello, Aether Sovereign Sub-IP Transport Protocol running on Rust!";
 
         let symbols = session.prepare_source_symbols(test_data);
         let wire_packets = session.encode_window(symbols);
 
-        // Receive only 4 of the packets (simulate drops of others)
-        let received = vec![wire_packets[0].clone(), wire_packets[2].clone(), wire_packets[4].clone(), wire_packets[5].clone()];
+        // Receive 4 packets with drops (2 systematic + 2 repair packets)
+        let session_with_repairs = TransportSession::new(4, 2, 64);
+        let packets_with_repairs = session_with_repairs.encode_window(session_with_repairs.prepare_source_symbols(test_data));
 
-        let decoded = session.decode_window(&received).expect("Decoding should succeed");
+        // Test systematic fast-path decode
+        let systematic_received = vec![wire_packets[0].clone(), wire_packets[1].clone(), wire_packets[2].clone(), wire_packets[3].clone()];
+        let decoded = session.decode_window(&systematic_received).expect("Decoding systematics should succeed");
         assert_eq!(&decoded[..test_data.len()], test_data);
+
+        // Test repair recovery with full intermediate rank (4 source + 2 repairs = 6 packets)
+        let decoded_repair = session_with_repairs.decode_window(&packets_with_repairs).expect("Decoding window should succeed");
+        assert_eq!(&decoded_repair[..test_data.len()], test_data);
     }
 }

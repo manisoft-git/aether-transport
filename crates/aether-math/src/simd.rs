@@ -3,7 +3,7 @@
 //! Provides vector multiply-add operations (dst[i] ^= src[i] * coeff) with
 //! runtime architecture dispatch across ARM NEON, x86_64 AVX2, and 64-bit unrolled fallback.
 
-use crate::gf256::{gf_mul, EXP_TABLE, LOG_TABLE};
+use crate::gf256::{EXP_TABLE, LOG_TABLE};
 
 /// Computes dst[i] ^= gf_mul(src[i], coeff) for all elements.
 /// Slices dst and src must have the same length.
@@ -120,6 +120,7 @@ unsafe fn vec_mul_add_avx2(dst: &mut [u8], src: &[u8], coeff: u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::gf256::gf_mul;
 
     #[test]
     fn test_vec_mul_add_correctness() {

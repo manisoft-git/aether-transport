@@ -1,6 +1,6 @@
 //! Complete frame handling including CRC verification.
 
-use crate::crc16::crc16_ccitt;
+use crate::crc16::{crc16_ccitt, crc16_ccitt_update};
 use crate::header::{PacketHeader, WireError, WIRE_HEADER_SIZE};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -23,11 +23,7 @@ impl<'a> PacketFrame<'a> {
         header.write_bytes(&mut header_buf);
 
         let mut computed = crc16_ccitt(&header_buf);
-        // Chain CRC over payload
-        for &b in payload {
-            let table_idx = ((computed >> 8) as u8 ^ b) as usize;
-            computed = (computed << 8) ^ crate::crc16::crc16_ccitt(&[b]);
-        }
+        computed = crc16_ccitt_update(computed, payload);
 
         header.crc16 = stored_crc;
 
@@ -51,10 +47,7 @@ impl<'a> PacketFrame<'a> {
         header.write_bytes(&mut out[..WIRE_HEADER_SIZE]);
 
         let mut crc = crc16_ccitt(&out[..WIRE_HEADER_SIZE]);
-        for &b in payload {
-            let table_idx = ((crc >> 8) as u8 ^ b) as usize;
-            crc = (crc << 8) ^ crate::crc16::crc16_ccitt(&[b]);
-        }
+        crc = crc16_ccitt_update(crc, payload);
 
         header.crc16 = crc;
         header.write_bytes(&mut out[..WIRE_HEADER_SIZE]);

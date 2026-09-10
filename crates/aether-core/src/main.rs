@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(" Listening on UDP: {}", bind_addr);
     println!("==================================================================");
 
-    let socket = UdpSocket::bind(bind_addr).await?;
+    let _socket = UdpSocket::bind(bind_addr).await?;
     info!("UDP reactor bound to {}", bind_addr);
 
     let mut session = TransportSession::new(8, 2, 1400);

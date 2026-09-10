@@ -24,14 +24,18 @@ const fn make_table() -> [u16; 256] {
 
 static CRC_TABLE: [u16; 256] = make_table();
 
-/// Calculates the CRC-16-CCITT checksum over a slice with an initial value of 0xFFFF.
-pub fn crc16_ccitt(data: &[u8]) -> u16 {
-    let mut crc = 0xFFFFu16;
+/// Updates a running CRC-16-CCITT with additional data.
+pub fn crc16_ccitt_update(mut crc: u16, data: &[u8]) -> u16 {
     for &byte in data {
         let table_idx = ((crc >> 8) as u8 ^ byte) as usize;
         crc = (crc << 8) ^ CRC_TABLE[table_idx];
     }
     crc
+}
+
+/// Calculates the CRC-16-CCITT checksum over a slice with an initial value of 0xFFFF.
+pub fn crc16_ccitt(data: &[u8]) -> u16 {
+    crc16_ccitt_update(0xFFFF, data)
 }
 
 #[cfg(test)]
