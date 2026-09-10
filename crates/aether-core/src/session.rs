@@ -33,12 +33,32 @@ impl TransportSession {
         self.current_window_id
     }
 
+    pub fn set_window_id(&mut self, id: u32) {
+        self.current_window_id = id;
+    }
+
+    pub fn set_redundancy_ratio(&mut self, ratio: f64) {
+        self.arbiter.set_redundancy_ratio(ratio);
+    }
+
+    pub fn redundancy_ratio(&self) -> f64 {
+        self.arbiter.redundancy_ratio()
+    }
+
     pub fn k(&self) -> usize {
         self.k
     }
 
     pub fn symbol_size(&self) -> usize {
         self.symbol_size
+    }
+
+    pub fn max_payload_per_window(&self) -> usize {
+        self.k * self.symbol_size
+    }
+
+    pub fn max_framed_payload_per_window(&self) -> usize {
+        (self.k * self.symbol_size).saturating_sub(4)
     }
 
     /// Splits input data into K source symbols.
@@ -56,6 +76,30 @@ impl TransportSession {
             symbols.push(sym);
         }
         symbols
+    }
+
+    /// Prepares source symbols with a 4-byte little-endian length prefix for exact framing.
+    pub fn prepare_framed_symbols(&self, data: &[u8]) -> Vec<Vec<u8>> {
+        let max_payload = self.max_framed_payload_per_window();
+        let actual_len = data.len().min(max_payload);
+        let mut framed = Vec::with_capacity(4 + actual_len);
+        framed.extend_from_slice(&(actual_len as u32).to_le_bytes());
+        framed.extend_from_slice(&data[..actual_len]);
+        self.prepare_source_symbols(&framed)
+    }
+
+    /// Extracts the framed payload from reconstructed window bytes.
+    /// Returns None if length header is inconsistent with window bounds.
+    pub fn extract_framed_payload(recovered: &[u8]) -> Option<Vec<u8>> {
+        if recovered.len() < 4 {
+            return None;
+        }
+        let len = u32::from_le_bytes([recovered[0], recovered[1], recovered[2], recovered[3]]) as usize;
+        if len + 4 <= recovered.len() {
+            Some(recovered[4..4 + len].to_vec())
+        } else {
+            None
+        }
     }
 
     /// Encodes a window of source symbols into wire packets (systematics + repairs).
@@ -83,8 +127,9 @@ impl TransportSession {
             packets.push(out);
         }
 
-        // 2. Proactive Fulcrum Repair Packets based on arbiter redundancy ratio
-        let num_repairs = self.r.max((self.k as f64 * self.arbiter.redundancy_ratio()).ceil() as usize);
+        // 2. Proactive Fulcrum Repair Packets: outer expansion (r) + dynamic channel redundancy
+        let extra_repairs = (self.k as f64 * self.arbiter.redundancy_ratio()).ceil() as usize;
+        let num_repairs = self.r + extra_repairs.max(1);
         for rep_idx in 0..num_repairs {
             let seed = (self.current_window_id as u16).wrapping_mul(101) + (rep_idx as u16) + 1;
             let mut payload = vec![0u8; self.symbol_size];
@@ -231,5 +276,41 @@ mod tests {
         // Test repair recovery with full intermediate rank (4 source + 2 repairs = 6 packets)
         let decoded_repair = session_with_repairs.decode_window(&packets_with_repairs).expect("Decoding window should succeed");
         assert_eq!(&decoded_repair[..test_data.len()], test_data);
+    }
+
+    #[test]
+    fn test_framed_symbols_roundtrip() {
+        let session = TransportSession::new(4, 2, 64);
+        let test_binary = b"Arbitrary binary payload \x00\x01\x02\x00 with zeroes preserved!";
+
+        let symbols = session.prepare_framed_symbols(test_binary);
+        let wire_packets = session.encode_window(symbols);
+
+        let decoded_raw = session.decode_window(&wire_packets).expect("Should decode window");
+        let extracted = TransportSession::extract_framed_payload(&decoded_raw).expect("Should extract framed payload");
+        assert_eq!(extracted, test_binary);
+    }
+
+    #[test]
+    fn test_stream_receiver_ingest() {
+        let session = TransportSession::new(4, 2, 64);
+        let test_data = b"StreamReceiver multi-packet progressive ingestion test";
+        let symbols = session.prepare_framed_symbols(test_data);
+        let wire_packets = session.encode_window(symbols);
+
+        let mut receiver = StreamReceiver::new(4, 2, 64);
+        let mut completed_window = None;
+
+        for pkt in &wire_packets {
+            if let Ok(Some((win_id, bytes))) = receiver.ingest_packet(pkt) {
+                completed_window = Some((win_id, bytes));
+                break;
+            }
+        }
+
+        let (win_id, recovered_bytes) = completed_window.expect("Should complete window");
+        assert_eq!(win_id, session.window_id());
+        let payload = TransportSession::extract_framed_payload(&recovered_bytes).expect("Should extract payload");
+        assert_eq!(payload, test_data);
     }
 }
