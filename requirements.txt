@@ -1,0 +1,2 @@
+# Aether-Transport Sovereign Protocol Suite & Research Telemetry Console
+# Built-in Python standard library runtime - zero external dependencies required

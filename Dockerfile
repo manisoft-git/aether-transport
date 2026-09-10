@@ -49,5 +49,7 @@ COPY --from=builder /workspace/target/release/aether-core /usr/local/bin/
 COPY --from=builder /workspace/target/release/aether-tui /usr/local/bin/
 COPY --from=builder /workspace/scripts /app/scripts
 COPY --from=builder /workspace/paper /app/paper
+COPY server.py /app/server.py
 
-CMD ["/bin/bash"]
+EXPOSE 9090
+CMD ["python3", "server.py"]
