@@ -7,6 +7,10 @@
     <string name="btn_active">AETHER ACTIVE</string>
     <string name="status_standby">STANDBY • TAP TO CONNECT</string>
     <string name="status_connected">CONNECTED • 🔑 SYSTEM VPN KEY ACTIVE</string>
+    <string name="mode_best_network">⚡ 1-CLICK BEST NETWORK</string>
+    <string name="mode_turbo_tunnel">🛡️ SOVEREIGN TURBO FEC</string>
+    <string name="btn_run_audit">🔍 RUN LIVE NETWORK AUDIT</string>
+    <string name="audit_hint">Benchmarks Cloudflare, Google, and Quad9 routes from your current device connection</string>
     <string name="op_username">tobiolive5850</string>
     <string name="op_surname">Tobi</string>
     <string name="op_firstname">Olive</string>

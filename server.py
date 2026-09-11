@@ -821,8 +821,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <span>📥 Download Native Android APK</span>
           <span style="font-size: 0.72rem; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">v1.0.0</span>
         </a>
+        <a href="https://github.com/manisoft-git/aether-transport/releases/download/v1.0.0-apk/Aether-Sovereign-VPN-v1.0.0.apk" target="_blank" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;">
+          <span>⚡ Direct Release Download</span>
+        </a>
         <a href="https://github.com/manisoft-git/aether-transport/actions" target="_blank" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: rgba(15,23,42,0.8); border: 1px solid var(--border); color: #cbd5e1; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem;">
-          <span>☁️ GitHub Actions Build Pipeline</span>
+          <span>☁️ GitHub Actions Pipeline</span>
         </a>
       </div>
 
@@ -1409,6 +1412,7 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/download/aether-vpn.apk":
             apk_paths = [
+                os.path.join(BASE_DIR, "dist", "Aether-Sovereign-VPN-v1.0.0.apk"),
                 os.path.join(BASE_DIR, "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk"),
                 os.path.join(BASE_DIR, "static", "Aether-Sovereign-VPN-v1.0.0.apk"),
                 os.path.join(BASE_DIR, "Aether-Sovereign-VPN-v1.0.0.apk")
@@ -1429,9 +1433,9 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
                     self.wfile.write(f.read())
                 return
             else:
-                # Redirect to GitHub Actions automated artifact release
+                # Direct redirect to GitHub Release binary download
                 self.send_response(302)
-                self.send_header("Location", "https://github.com/manisoft-git/aether-transport/actions")
+                self.send_header("Location", "https://github.com/manisoft-git/aether-transport/releases/download/v1.0.0-apk/Aether-Sovereign-VPN-v1.0.0.apk")
                 self.end_headers()
                 return
 

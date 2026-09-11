@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -e
+
+# Aether Gradle Wrapper Launcher
+if command -v gradle >/dev/null 2>&1; then
+    exec gradle "$@"
+fi
+
+echo "[!] System gradle not found. Please install Gradle 8.5+ or JDK 17."
+exit 1
