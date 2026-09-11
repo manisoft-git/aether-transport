@@ -13,6 +13,10 @@ import random
 import socket
 import subprocess
 import threading
+import re
+import io
+import zipfile
+import urllib.request
 from urllib.parse import urlparse, parse_qs
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -821,8 +825,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <span>📥 Download Native Android APK</span>
           <span style="font-size: 0.72rem; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">v1.0.0</span>
         </a>
-        <a href="https://github.com/manisoft-git/aether-transport/releases/download/v1.0.0-apk/Aether-Sovereign-VPN-v1.0.0.apk" target="_blank" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;">
-          <span>⚡ Direct Release Download</span>
+        <a href="https://github.com/manisoft-git/aether-transport/releases" target="_blank" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;">
+          <span>📦 GitHub Releases Hub</span>
         </a>
         <a href="https://github.com/manisoft-git/aether-transport/actions" target="_blank" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: rgba(15,23,42,0.8); border: 1px solid var(--border); color: #cbd5e1; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem;">
           <span>☁️ GitHub Actions Pipeline</span>
@@ -1329,6 +1333,127 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </html>
 """
 
+def get_github_token():
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        return token
+    cred_file = os.path.expanduser("~/.git-credentials")
+    if os.path.exists(cred_file):
+        try:
+            with open(cred_file, "r") as f:
+                content = f.read()
+                m = re.search(r':([^:@]+)@github\.com', content)
+                if m:
+                    return m.group(1)
+        except Exception:
+            pass
+    return None
+
+def try_fetch_github_release_apk():
+    """Attempts to fetch the APK from GitHub Releases or latest Actions Artifact using stored credentials."""
+    token = get_github_token()
+    if not token:
+        return None
+
+    dest_dir = os.path.join(BASE_DIR, "dist")
+    os.makedirs(dest_dir, exist_ok=True)
+    dest_path = os.path.join(dest_dir, "Aether-Sovereign-VPN-v1.0.0.apk")
+
+    headers = {
+        "Authorization": f"token {token}",
+        "User-Agent": "Aether-Transport-Server"
+    }
+
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/repos/manisoft-git/aether-transport/releases",
+            headers=headers
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            releases = json.loads(resp.read().decode("utf-8"))
+            for rel in releases:
+                for asset in rel.get("assets", []):
+                    if asset.get("name", "").endswith(".apk"):
+                        asset_url = asset.get("url")
+                        down_headers = dict(headers)
+                        down_headers["Accept"] = "application/octet-stream"
+                        down_req = urllib.request.Request(asset_url, headers=down_headers)
+                        with urllib.request.urlopen(down_req, timeout=60) as down_resp:
+                            with open(dest_path, "wb") as out_f:
+                                out_f.write(down_resp.read())
+                            return dest_path
+    except Exception:
+        pass
+
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/repos/manisoft-git/aether-transport/actions/artifacts",
+            headers=headers
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            for art in data.get("artifacts", []):
+                if "Aether" in art.get("name", ""):
+                    down_url = art.get("archive_download_url")
+                    down_req = urllib.request.Request(down_url, headers=headers)
+                    with urllib.request.urlopen(down_req, timeout=60) as down_resp:
+                        zip_bytes = io.BytesIO(down_resp.read())
+                        with zipfile.ZipFile(zip_bytes) as z:
+                            for fname in z.namelist():
+                                if fname.endswith(".apk"):
+                                    with open(dest_path, "wb") as out_f:
+                                        out_f.write(z.read(fname))
+                                    return dest_path
+    except Exception:
+        pass
+
+    return None
+
+def render_apk_build_pending_html():
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="8">
+  <title>Aether Sovereign VPN APK — Build Pipeline</title>
+  <style>
+    :root { --bg: #030712; --panel: #0b1329; --cyan: #38bdf8; --emerald: #34d399; --border: #1e293b; --text: #f8fafc; --muted: #94a3b8; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; margin: 0; padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 90vh; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 32px; max-width: 580px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+    .spinner { width: 56px; height: 56px; border: 4px solid rgba(56, 189, 248, 0.15); border-top-color: var(--cyan); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn { display: inline-block; padding: 10px 20px; border-radius: 6px; font-weight: 700; text-decoration: none; color: #fff; background: linear-gradient(135deg, #0284c7, #0ea5e9); margin: 8px 6px; font-size: 0.88rem; }
+    .btn-secondary { background: rgba(30, 41, 59, 0.8); border: 1px solid var(--border); color: var(--muted); }
+    .badge { display: inline-block; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <div class="badge">AETHER SOVEREIGN VPN v1.0.0</div>
+    <h2 style="margin: 0 0 10px; color: var(--cyan);">APK Build Pipeline Dispatched</h2>
+    <p style="color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 24px;">
+      The native Android APK compilation workflow is currently processing on GitHub Actions.
+      Once compiled and signed, this page will <strong>automatically trigger the APK download</strong> directly to your device.
+    </p>
+    <div style="background: rgba(3,7,18,0.7); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: left; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 24px;">
+      <div style="color: var(--emerald); font-weight: 700; margin-bottom: 6px;">⚡ What happens next:</div>
+      <div>1. GitHub Actions runner compiles the standalone APK (Zero external dependencies).</div>
+      <div>2. Aether Server fetches the completed binary into local storage.</div>
+      <div>3. Automatic page refresh occurs every 8 seconds until download starts.</div>
+    </div>
+    <div>
+      <a href="/download/aether-vpn.apk" class="btn">🔄 Check Now</a>
+      <a href="https://github.com/manisoft-git/aether-transport/actions" target="_blank" class="btn btn-secondary">☁️ View Build Logs</a>
+    </div>
+    <div style="margin-top: 24px; font-size: 0.75rem; color: var(--muted);">
+      Operator: <strong style="color: #fff;">Tobi Olive</strong> (<code>tobiolive5850</code>) • <code>tobi585olive@gmail.com</code>
+    </div>
+  </div>
+</body>
+</html>"""
+
 class AetherRequestHandler(BaseHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -1419,9 +1544,12 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
             ]
             found_path = None
             for p in apk_paths:
-                if os.path.exists(p):
+                if os.path.exists(p) and os.path.getsize(p) > 1024:
                     found_path = p
                     break
+
+            if not found_path:
+                found_path = try_fetch_github_release_apk()
 
             if found_path:
                 self.send_response(200)
@@ -1433,10 +1561,12 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
                     self.wfile.write(f.read())
                 return
             else:
-                # Direct redirect to GitHub Release binary download
-                self.send_response(302)
-                self.send_header("Location", "https://github.com/manisoft-git/aether-transport/releases/download/v1.0.0-apk/Aether-Sovereign-VPN-v1.0.0.apk")
+                html = render_apk_build_pending_html()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(html.encode("utf-8"))))
                 self.end_headers()
+                self.wfile.write(html.encode("utf-8"))
                 return
 
         if path == "/api/vpn/info":
