@@ -3,8 +3,8 @@
 *.bk
 .DS_Store
 *.log
-
 .github/
+
 /target/
 target/
 __pycache__/

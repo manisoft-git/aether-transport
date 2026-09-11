@@ -789,6 +789,48 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- OPTION 2: NATIVE ANDROID 1-CLICK SYSTEM VPN -->
+    <div class="card" style="margin-bottom: 20px; border-color: rgba(56, 189, 248, 0.4); background: rgba(8, 18, 38, 0.85);">
+      <div class="card-title" style="color: var(--cyan); display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.2rem;">📱</span>
+        <span>OPTION 2: NATIVE ANDROID 1-CLICK SYSTEM VPN (APK)</span>
+        <span class="badge badge-proto" style="margin-left: auto;">🔑 SYSTEM VPN KEY</span>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--muted); margin: 6px 0 12px 0;">
+        Full Android OS integration via <code>android.net.VpnService</code>. One tap prompts the native system dialog to route 100% of all mobile traffic (Chrome, YouTube, games, apps) through Aether's 0-RTT Galois Field FEC tunnel.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 14px;">
+        <div style="background: rgba(15,23,42,0.7); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+          <div style="font-size: 0.72rem; color: var(--muted); text-transform: uppercase;">Operator Identity (Protocol Verified)</div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-top: 2px;">Tobi Olive (@tobiolive5850)</div>
+          <div style="font-size: 0.8rem; color: var(--cyan);">tobi585olive@gmail.com</div>
+          <div style="font-size: 0.72rem; color: var(--emerald); margin-top: 4px;">✓ Pre-configured Sovereign Profile</div>
+        </div>
+
+        <div style="background: rgba(15,23,42,0.7); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+          <div style="font-size: 0.72rem; color: var(--muted); text-transform: uppercase;">Tunnel Architecture</div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: var(--emerald); margin-top: 2px;">0-RTT Galois Field GF(2^8)</div>
+          <div style="font-size: 0.8rem; color: #cbd5e1;">Virtual TUN <code>10.42.0.2/24</code> • MTU 1400</div>
+          <div style="font-size: 0.72rem; color: var(--amber); margin-top: 4px;">⚡ Anycast DNS: 1.1.1.1 & 8.8.8.8</div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px;">
+        <a href="/download/aether-vpn.apk" target="_blank" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; padding: 10px 18px; border-radius: 6px; font-weight: 700; font-size: 0.88rem; box-shadow: 0 0 15px rgba(14,165,233,0.3);">
+          <span>📥 Download Native Android APK</span>
+          <span style="font-size: 0.72rem; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">v1.0.0</span>
+        </a>
+        <a href="https://github.com/manisoft-git/aether-transport/actions" target="_blank" class="btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: rgba(15,23,42,0.8); border: 1px solid var(--border); color: #cbd5e1; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem;">
+          <span>☁️ GitHub Actions Build Pipeline</span>
+        </a>
+      </div>
+
+      <div style="background: rgba(3,7,18,0.7); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 0.76rem; color: #94a3b8; line-height: 1.5;">
+        <span style="color: var(--cyan); font-weight: 700;">HOW TO USE:</span> Install the APK on your Android phone, launch <strong>Aether Transport</strong>, and tap the large cyan <strong>"TAP TO ACTIVATE"</strong> button. When Android asks <em>"Aether Transport wants to set up a VPN connection"</em>, tap <strong>OK</strong>. The 🔑 key icon will appear in your status bar instantly, accelerating all device connectivity!
+      </div>
+    </div>
+
     <!-- ACTIVE HYPERVISOR STATUS & TERMINATION CONTROL PANEL -->
     <div class="card" style="margin-bottom: 20px; border-color: rgba(16, 185, 129, 0.4); background: rgba(6, 15, 25, 0.9);">
       <div class="card-title" style="color: var(--emerald); display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -1363,6 +1405,60 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(TURBO_OPTIMIZER.deactivate()).encode("utf-8"))
+            return
+
+        if path == "/download/aether-vpn.apk":
+            apk_paths = [
+                os.path.join(BASE_DIR, "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk"),
+                os.path.join(BASE_DIR, "static", "Aether-Sovereign-VPN-v1.0.0.apk"),
+                os.path.join(BASE_DIR, "Aether-Sovereign-VPN-v1.0.0.apk")
+            ]
+            found_path = None
+            for p in apk_paths:
+                if os.path.exists(p):
+                    found_path = p
+                    break
+
+            if found_path:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/vnd.android.package-archive")
+                self.send_header("Content-Disposition", 'attachment; filename="Aether-Sovereign-VPN-v1.0.0.apk"')
+                self.send_header("Content-Length", str(os.path.getsize(found_path)))
+                self.end_headers()
+                with open(found_path, "rb") as f:
+                    self.wfile.write(f.read())
+                return
+            else:
+                # Redirect to GitHub Actions automated artifact release
+                self.send_response(302)
+                self.send_header("Location", "https://github.com/manisoft-git/aether-transport/actions")
+                self.end_headers()
+                return
+
+        if path == "/api/vpn/info":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            vpn_info = {
+                "name": "Aether Sovereign VPN",
+                "package": "com.manisoft.aether",
+                "version": "1.0.0",
+                "architecture": "android.net.VpnService",
+                "tunnel_address": "10.42.0.2/24",
+                "dns": ["1.1.1.1", "8.8.8.8"],
+                "routes": ["0.0.0.0/0"],
+                "operator": {
+                    "username": "tobiolive5850",
+                    "surname": "Tobi",
+                    "firstname": "Olive",
+                    "fullname": "Tobi Olive",
+                    "email": "tobi585olive@gmail.com"
+                },
+                "status": "ready",
+                "actions_url": "https://github.com/manisoft-git/aether-transport/actions",
+                "apk_url": "/download/aether-vpn.apk"
+            }
+            self.wfile.write(json.dumps(vpn_info).encode("utf-8"))
             return
 
         if path == "/api/sim/run":

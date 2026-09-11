@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aether Transport</string>
+    <string name="vpn_title">AETHER SOVEREIGN VPN</string>
+    <string name="vpn_subtitle">Galois Field GF(2^8) Sliding-Window 0-RTT FEC</string>
+    <string name="btn_activate">TAP TO ACTIVATE</string>
+    <string name="btn_active">AETHER ACTIVE</string>
+    <string name="status_standby">STANDBY • TAP TO CONNECT</string>
+    <string name="status_connected">CONNECTED • 🔑 SYSTEM VPN KEY ACTIVE</string>
+    <string name="op_username">tobiolive5850</string>
+    <string name="op_surname">Tobi</string>
+    <string name="op_firstname">Olive</string>
+    <string name="op_fullname">Tobi Olive</string>
+    <string name="op_email">tobi585olive@gmail.com</string>
+</resources>
