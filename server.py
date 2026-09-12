@@ -1691,6 +1691,37 @@ class AetherRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         sys.stderr.write(f"[Aether-Transport // {self.log_date_time_string()}] {args[0]} -> {args[1]}\n")
 
+# ============================================================================
+# 24/7 FLEET KEEP-ALIVE ANTI-SLEEP WORKER
+# Automatically pings all ManiSoft cloud services on Render every 9 minutes
+# ============================================================================
+def _start_fleet_keep_alive():
+    fleet_urls = [
+        "https://manisoft-passmaster-ai.onrender.com",
+        "https://manisoft-lumina.onrender.com",
+        "https://manisoft-panel.onrender.com",
+        "https://manisoft-starshine.onrender.com",
+        "https://manisoft-strike-ops.onrender.com",
+        "https://manisoft-subway-surfers.onrender.com",
+        "https://manisoft-aether-transport.onrender.com"
+    ]
+    def loop():
+        time.sleep(25)
+        while True:
+            for u in fleet_urls:
+                try:
+                    req = urllib.request.Request(u, headers={"User-Agent": "ManiSoft-Aether-KeepAlive/2.0"})
+                    with urllib.request.urlopen(req, timeout=15) as r:
+                        r.read(100)
+                except Exception:
+                    pass
+            time.sleep(540) # 9 minutes (well under Render 15-min sleep limit)
+
+    t = threading.Thread(target=loop, daemon=True, name="AetherKeepAliveWorker")
+    t.start()
+
+_start_fleet_keep_alive()
+
 def run_server(port=PORT):
     pid = os.getpid()
     server = HTTPServer(("0.0.0.0", port), AetherRequestHandler)
